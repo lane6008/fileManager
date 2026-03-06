@@ -446,16 +446,16 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>编号</th>
+                                <th style="width: 40px;">编号</th>
                                 <th style="width: 300px; max-width: 300px;">文件名</th>
-                                <th>类型</th>
+                                <th style="width: 60px;">类型</th>
                                 <th style="width: 500px; max-width: 500px;">描述</th>
-                                <th>上传人</th>
-                                <th>部门</th>
-                                <th>文件大小</th>
-                                <th>上传时间</th>
-                                <th style="text-align: center; width: 120px;">缩略图</th>
-                                <th style="text-align: center;">操作</th>
+                                <th style="width: 60px;">上传人</th>
+                                <th style="width: 60px;">部门</th>
+                                <th style="width: 80px;">文件大小</th>
+                                <th style="width: 150px;">上传时间</th>
+                                <th style="text-align: center; width: 100px;">缩略图</th>
+                                <th style="text-align: center; width: 220px;">操作</th>
                             </tr>
                         </thead>
                         <tbody id="fileTableBody">
@@ -727,16 +727,16 @@
                     console.log('文件数量:', data.files ? data.files.length : 0);
                     tbody.innerHTML = (data.files || []).map(f => `
                         <tr>
-                            <td>${f.id}</td>
+                            <td style="width: 40px;">${f.id}</td>
                             <td style="width: 300px; max-width: 300px; word-wrap: break-word; overflow-wrap: break-word;">${f.file_name}</td>
-                            <td>${f.file_type}</td>
+                            <td style="width: 60px;">${f.file_type}</td>
                             <td style="width: 500px; max-width: 500px; word-wrap: break-word; overflow-wrap: break-word;">${f.file_intro || '-'}</td>
-                            <td>${f.uploader}</td>
-                            <td>${f.department || '-'}</td>
-                            <td>${formatSize(f.size)}</td>
-                            <td>${new Date(f.datetime).toLocaleString()}</td>
-                            <td style="text-align: center; width: 120px;">${(f.file_type === 'picture') ? `<img src="${f.url}" style="max-width: 100px; max-height: 100px; object-fit: contain;" onerror="this.style.display='none'">` : '-'}</td>
-                            <td style="text-align: center; width: 200px;">
+                            <td style="width: 60px;">${f.uploader}</td>
+                            <td style="width: 60px;">${f.department || '-'}</td>
+                            <td style="width: 80px;">${formatSize(f.size)}</td>
+                            <td style="width: 150px;">${new Date(f.datetime).toLocaleString()}</td>
+                            <td style="text-align: center; width: 100px;">${(f.file_type === 'picture') ? `<img src="${f.url}" style="max-width: 90px; max-height: 90px; object-fit: contain;" onerror="this.style.display='none'">` : '-'}</td>
+                            <td style="text-align: center; width: 220px;">
                                 <button class="download-btn" onclick="window.open('${f.url}')" style="margin-right: 5px;">下载</button>
                                 <button class="download-btn" onclick="editFile(${f.id}, '${f.file_name.replace(/'/g, "\\'")}', '${(f.file_intro || '').replace(/'/g, "\\'")}', '${f.file_type}')" style="background:#f0ad4e; margin-right: 5px;">修改</button>
                                 <button class="download-btn" onclick="deleteFile(${f.id})" style="background:#ff6b6b">删除</button>
