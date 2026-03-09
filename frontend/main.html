@@ -736,7 +736,8 @@
                             <td style="width: 80px;">${formatSize(f.size)}</td>
                             <td style="width: 150px;">${new Date(f.datetime).toLocaleString()}</td>
                             <td style="text-align: center; width: 100px;">${(f.file_type === 'picture') ? `<img src="${f.url}" style="max-width: 90px; max-height: 90px; object-fit: contain;" onerror="this.style.display='none'">` : '-'}</td>
-                            <td style="text-align: center; width: 220px;">
+                            <td style="text-align: center; width: 280px;">
+                                <button class="download-btn" onclick="copyUrl('${f.url}')" style="background:#5bc0de; margin-right: 5px; transition: background 0.2s;" onmouseover="this.style.background='#46b8da'" onmouseout="this.style.background='#5bc0de'" onmousedown="this.style.background='#31b0d5'" onmouseup="this.style.background='#46b8da'">复制URL</button>
                                 <button class="download-btn" onclick="window.open('${f.url}')" style="margin-right: 5px;">下载</button>
                                 <button class="download-btn" onclick="editFile(${f.id}, '${f.file_name.replace(/'/g, "\\'")}', '${(f.file_intro || '').replace(/'/g, "\\'")}', '${f.file_type}')" style="background:#f0ad4e; margin-right: 5px;">修改</button>
                                 <button class="download-btn" onclick="deleteFile(${f.id})" style="background:#ff6b6b">删除</button>
@@ -781,6 +782,16 @@
 
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function copyUrl(url) {
+            try {
+                await navigator.clipboard.writeText(url);
+                showToast('URL已复制到剪贴板', 'success');
+            } catch (error) {
+                console.error('复制失败:', error);
+                showToast('复制失败，请手动复制', 'error');
+            }
         }
 
         async function saveEditFile() {
