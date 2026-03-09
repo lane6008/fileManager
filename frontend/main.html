@@ -383,7 +383,17 @@
             <div class="upload-section">
                 <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-weight: bold; flex: 1;">文件上传</span>
-                    <button class="submit-btn" onclick="submitUpload()">提交上传</button>
+                    <button class="submit-btn" id="submitUploadBtn" onclick="submitUpload()">
+                        <span id="btnText">提交上传</span>
+                        <span id="btnLoading" style="display: none;">
+                            <svg class="loading-spinner" width="16" height="16" viewBox="0 0 50 50" style="display: inline-block; vertical-align: middle; margin-left: 5px;">
+                                <circle cx="25" cy="25" r="20" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="80" stroke-dashoffset="60">
+                                    <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/>
+                                </circle>
+                            </svg>
+                            提交中...
+                        </span>
+                    </button>
                 </div>
                 <div class="upload-content">
                     <!-- 左侧上传按钮 -->
@@ -500,8 +510,8 @@
                 </select>
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button onclick="closeEditModal()" style="padding: 8px 20px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">取消</button>
-                <button onclick="saveEditFile()" style="padding: 8px 20px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">确认</button>
+                <button onclick="closeEditModal()" style="padding: 8px 20px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#888'" onmouseout="this.style.background='#999'" onmousedown="this.style.background='#777'" onmouseup="this.style.background='#888'">取消</button>
+                <button onclick="saveEditFile()" style="padding: 8px 20px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#5a6fd6'" onmouseout="this.style.background='#667eea'" onmousedown="this.style.background='#4e62c4'" onmouseup="this.style.background='#5a6fd6'">确认</button>
             </div>
         </div>
     </div>
@@ -512,6 +522,88 @@
         let currentUser = null;
         let currentPage = 1;
         let currentType = 'all';
+
+        // 缓存配置
+        const CACHE_PREFIX = 'fileListCache_';
+        const CACHE_EXPIRY = 5 * 60 * 1000; // 5分钟有效期
+
+        // 获取缓存键（包含用户ID隔离）
+        function getCacheKey() {
+            const userId = currentUser ? currentUser.id || currentUser.name : 'anonymous';
+            const searchKey = JSON.stringify(searchParams);
+            return `${CACHE_PREFIX}${userId}_${currentType}_${currentPage}_${searchKey}`;
+        }
+
+        // 获取缓存数据
+        function getCache() {
+            try {
+                const cache = localStorage.getItem(getCacheKey());
+                if (!cache) return null;
+                const { data, timestamp } = JSON.parse(cache);
+                if (Date.now() - timestamp > CACHE_EXPIRY) {
+                    localStorage.removeItem(getCacheKey());
+                    return null;
+                }
+                return data;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // 设置缓存数据
+        function setCache(data) {
+            try {
+                const cache = {
+                    data,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(getCacheKey(), JSON.stringify(cache));
+            } catch (e) {
+                console.warn('缓存失败:', e);
+            }
+        }
+
+        // 清除当前用户的所有缓存
+        function clearUserCache() {
+            try {
+                const userId = currentUser ? currentUser.id || currentUser.name : 'anonymous';
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith(`${CACHE_PREFIX}${userId}_`)) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+            } catch (e) {
+                console.warn('清除缓存失败:', e);
+            }
+        }
+
+        // 渲染文件列表
+        function renderFileList(files) {
+            const tbody = document.getElementById('fileTableBody');
+            tbody.innerHTML = (files || []).map(f => `
+                <tr>
+                    <td style="width: 40px;">${f.id}</td>
+                    <td style="width: 300px; max-width: 300px; word-wrap: break-word; overflow-wrap: break-word;">${f.file_name}</td>
+                    <td style="width: 60px;">${f.file_type}</td>
+                    <td style="width: 500px; max-width: 500px; word-wrap: break-word; overflow-wrap: break-word;">${f.file_intro || '-'}</td>
+                    <td style="width: 60px;">${f.uploader}</td>
+                    <td style="width: 60px;">${f.department || '-'}</td>
+                    <td style="width: 80px;">${formatSize(f.size)}</td>
+                    <td style="width: 150px;">${new Date(f.datetime).toLocaleString()}</td>
+                    <td style="text-align: center; width: 100px;">${(f.file_type === 'picture') ? `<img src="${f.url}" style="max-width: 90px; max-height: 90px; object-fit: contain;" onerror="this.style.display='none'">` : '-'}</td>
+                    <td style="text-align: center; width: 280px;">
+                        <button class="download-btn" onclick="copyUrl('${f.url}')" style="background:#5bc0de; margin-right: 5px; transition: background 0.2s;" onmouseover="this.style.background='#46b8da'" onmouseout="this.style.background='#5bc0de'" onmousedown="this.style.background='#31b0d5'" onmouseup="this.style.background='#46b8da'">复制URL</button>
+                        <button class="download-btn" onclick="window.open('${f.url}')" style="margin-right: 5px;">下载</button>
+                        <button class="download-btn" onclick="editFile(${f.id}, '${f.file_name.replace(/'/g, "\\'")}', '${(f.file_intro || '').replace(/'/g, "\\'")}', '${f.file_type}')" style="background:#f0ad4e; margin-right: 5px;">修改</button>
+                        <button class="download-btn" onclick="deleteFile(${f.id})" style="background:#ff6b6b">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} 页`;
+        }
 
         const typeMapping = {
             'doc': 'Word', 'docx': 'Word',
@@ -656,6 +748,14 @@
                 return;
             }
 
+            // 显示 loading 状态
+            const btn = document.getElementById('submitUploadBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+
             const formData = new FormData();
             selectedFiles.forEach((file, index) => {
                 formData.append('files', file);
@@ -676,12 +776,18 @@
                     showToast('上传成功', 'success');
                     selectedFiles = [];
                     renderUploadTable();
-                    loadFileList();
+                    clearUserCache(); // 清除缓存，强制刷新
+                    loadFileList(true);
                 } else {
                     showToast(data.message, 'error');
                 }
             } catch (error) {
                 showToast('上传失败', 'error');
+            } finally {
+                // 恢复按钮状态
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
             }
         }
 
@@ -710,44 +816,49 @@
             loadFileList();
         }
 
-        async function loadFileList() {
+        async function loadFileList(forceRefresh = false) {
             try {
-                let url = `${API_BASE_URL}/files?type=${currentType}&page=${currentPage}&username=${currentUser.name}`;
-                if (searchParams.keyword) url += `&keyword=${encodeURIComponent(searchParams.keyword)}`;
-                if (searchParams.uploader) url += `&uploader=${encodeURIComponent(searchParams.uploader)}`;
-                if (searchParams.dept) url += `&dept=${encodeURIComponent(searchParams.dept)}`;
-                if (searchParams.startDate) url += `&startDate=${searchParams.startDate}`;
-                if (searchParams.endDate) url += `&endDate=${searchParams.endDate}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                console.log('文件列表数据:', data);
-
-                if (data.success) {
-                    const tbody = document.getElementById('fileTableBody');
-                    console.log('文件数量:', data.files ? data.files.length : 0);
-                    tbody.innerHTML = (data.files || []).map(f => `
-                        <tr>
-                            <td style="width: 40px;">${f.id}</td>
-                            <td style="width: 300px; max-width: 300px; word-wrap: break-word; overflow-wrap: break-word;">${f.file_name}</td>
-                            <td style="width: 60px;">${f.file_type}</td>
-                            <td style="width: 500px; max-width: 500px; word-wrap: break-word; overflow-wrap: break-word;">${f.file_intro || '-'}</td>
-                            <td style="width: 60px;">${f.uploader}</td>
-                            <td style="width: 60px;">${f.department || '-'}</td>
-                            <td style="width: 80px;">${formatSize(f.size)}</td>
-                            <td style="width: 150px;">${new Date(f.datetime).toLocaleString()}</td>
-                            <td style="text-align: center; width: 100px;">${(f.file_type === 'picture') ? `<img src="${f.url}" style="max-width: 90px; max-height: 90px; object-fit: contain;" onerror="this.style.display='none'">` : '-'}</td>
-                            <td style="text-align: center; width: 280px;">
-                                <button class="download-btn" onclick="copyUrl('${f.url}')" style="background:#5bc0de; margin-right: 5px; transition: background 0.2s;" onmouseover="this.style.background='#46b8da'" onmouseout="this.style.background='#5bc0de'" onmousedown="this.style.background='#31b0d5'" onmouseup="this.style.background='#46b8da'">复制URL</button>
-                                <button class="download-btn" onclick="window.open('${f.url}')" style="margin-right: 5px;">下载</button>
-                                <button class="download-btn" onclick="editFile(${f.id}, '${f.file_name.replace(/'/g, "\\'")}', '${(f.file_intro || '').replace(/'/g, "\\'")}', '${f.file_type}')" style="background:#f0ad4e; margin-right: 5px;">修改</button>
-                                <button class="download-btn" onclick="deleteFile(${f.id})" style="background:#ff6b6b">删除</button>
-                            </td>
-                        </tr>
-                    `).join('');
-                    document.getElementById('pageInfo').textContent = `第 ${currentPage} 页`;
+                // 先尝试从缓存加载（非强制刷新时）
+                if (!forceRefresh) {
+                    const cachedData = getCache();
+                    if (cachedData) {
+                        console.log('从缓存加载文件列表');
+                        renderFileList(cachedData);
+                        // 后台静默更新
+                        fetchLatestData();
+                        return;
+                    }
                 }
+
+                // 从服务器加载
+                await fetchLatestData();
             } catch (error) {
                 console.error('加载失败', error);
+                // 如果服务器请求失败，尝试使用缓存（即使已过期）
+                const cachedData = getCache();
+                if (cachedData) {
+                    renderFileList(cachedData);
+                    showToast('使用缓存数据，可能不是最新', 'warning');
+                }
+            }
+        }
+
+        // 从服务器获取最新数据
+        async function fetchLatestData() {
+            let url = `${API_BASE_URL}/files?type=${currentType}&page=${currentPage}&username=${currentUser.name}`;
+            if (searchParams.keyword) url += `&keyword=${encodeURIComponent(searchParams.keyword)}`;
+            if (searchParams.uploader) url += `&uploader=${encodeURIComponent(searchParams.uploader)}`;
+            if (searchParams.dept) url += `&dept=${encodeURIComponent(searchParams.dept)}`;
+            if (searchParams.startDate) url += `&startDate=${searchParams.startDate}`;
+            if (searchParams.endDate) url += `&endDate=${searchParams.endDate}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            console.log('从服务器加载文件列表:', data);
+
+            if (data.success) {
+                renderFileList(data.files);
+                setCache(data.files);
             }
         }
 
@@ -762,7 +873,8 @@
                 
                 if (data.success) {
                     showToast('删除成功', 'success');
-                    loadFileList();
+                    clearUserCache(); // 清除缓存，强制刷新
+                    loadFileList(true);
                 } else {
                     showToast(data.message || '删除失败', 'error');
                 }
@@ -776,7 +888,38 @@
             document.getElementById('editFileId').value = fileId;
             document.getElementById('editFileName').value = fileName;
             document.getElementById('editFileIntro').value = fileIntro === 'null' ? '' : fileIntro;
-            document.getElementById('editFileType').value = fileType;
+            
+            // 设置文件类型下拉框默认值
+            const select = document.getElementById('editFileType');
+            const normalizedType = fileType ? fileType.trim() : '';
+            
+            // 先尝试直接匹配
+            select.value = normalizedType;
+            
+            // 如果直接匹配失败，尝试查找匹配的 option
+            if (select.value !== normalizedType) {
+                console.warn('文件类型未直接匹配:', fileType, '尝试查找匹配项...');
+                
+                // 遍历所有 option 查找匹配项
+                let matched = false;
+                for (let i = 0; i < select.options.length; i++) {
+                    const option = select.options[i];
+                    // 支持大小写不敏感匹配和包含匹配
+                    if (option.value.toLowerCase() === normalizedType.toLowerCase() ||
+                        option.text.toLowerCase() === normalizedType.toLowerCase()) {
+                        select.selectedIndex = i;
+                        matched = true;
+                        console.log('找到匹配项:', option.value, option.text);
+                        break;
+                    }
+                }
+                
+                if (!matched) {
+                    console.warn('未找到匹配的文件类型:', fileType, '可用选项:', 
+                        Array.from(select.options).map(o => `${o.value}(${o.text})`).join(', '));
+                }
+            }
+            
             document.getElementById('editModal').style.display = 'flex';
         }
 
@@ -823,7 +966,8 @@
                 if (data.success) {
                     showToast('修改成功', 'success');
                     closeEditModal();
-                    loadFileList();
+                    clearUserCache(); // 清除缓存，强制刷新
+                    loadFileList(true);
                 } else {
                     showToast(data.message || '修改失败', 'error');
                 }

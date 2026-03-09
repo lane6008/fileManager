@@ -444,7 +444,7 @@ app.put('/api/files/:id', async (req, res) => {
 
         // 更新文件信息（同时更新上传时间为当前时间）
         await pool.execute(
-            'UPDATE files SET file_name = ?, file_intro = ?, type_id = ?, datetime = DATE_ADD(NOW(), INTERVAL 8 HOUR) WHERE id = ?'
+            'UPDATE files SET file_name = ?, file_intro = ?, type_id = ?, datetime = DATE_ADD(NOW(), INTERVAL 8 HOUR) WHERE id = ?',
             [fileName, fileIntro || null, typeId, fileId]
         );
 
